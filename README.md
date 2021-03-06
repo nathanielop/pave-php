@@ -1,5 +1,5 @@
 # Pave
-Paving the way to better state management.
+Paving the way to better state management, in PHP.
 
 ## Why?
 
