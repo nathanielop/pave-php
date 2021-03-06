@@ -9,7 +9,7 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/caseywebdev/pave"
+    "url": "https://github.com/nathanielop/pave-php"
   },
   "devDependencies": {
     "watchy": "0.9",
