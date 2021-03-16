@@ -1,48 +1,40 @@
 <?php
-namespace Pave;
 
-use function Pave\EnsureObject\ensureObject;
-use function Pave\IsArray\isArray;
-use function Pave\IsObject\isObject;
-use function Pave\NormalizeField\normalizeField;
+require 'ensure-object.php';
+require 'is-array.php';
+require 'is-object.php';
+require 'normalize-field.php';
 
-class CacheExecute {
-  public $_;
-  public $cache;
-  public $query;
-  public $value;
-
-  public static function walk() {
-    while (true) {
-      if(isArray(self::$value)) {
-        return array_map(self::walk(self::$_, self::$cache, self::$query, self::$value), self::$array);
-      } else if (!isObject(self::$value) || gettype(self::$value) === 'undefined') {
-        return self::$value;
-      } else if (self::$value._type === '_ref') {
-        self::$value = self::$cache[self::$value.key];   
-      } else {
-        { $_args, $_field, ...$_query } = ensureObject(self::$query);
-        $_query[`_on_${$value._type}`];
-        $data = new Object;
-        foreach (self::$_query as $alias) {
-          if (str_starts_with($alias, '_on_')) continue;
-          self::$query = ensureObject($_query[$alias]);
-          $field = normalizeField($alias, self::$query);
-          if (self::$value.field) {
-            $data[$alias] = self::walk(self::$_, self::$cache, self::$query, self::$value[$field]);
-          } else $_.isPartial = true;
-        }
-        return $data;
+function walk($_, $cache, $query, $value) {
+  while (true) {
+    if(isArray($value)) {
+      return array_map(walk($_, $cache, $query, $value), $array);
+    } else if (!isObject($value) || gettype($value) === 'undefined') {
+      return $value;
+    } else if ($value->_type === '_ref') {
+      $value = $cache[$value->key];   
+    } else {
+      list($_args, $_field, ...$_query) = ensureObject($query);
+      $_query[`_on_${$value->_type}`];
+      $data = new Object;
+      foreach ($_query as $alias) {
+        if (str_starts_with($alias, '_on_')) continue;
+        $query = ensureObject($_query[$alias]);
+        $field = normalizeField($alias, $query);
+        if ($value->field) {
+          $data[$alias] = walk($_, $cache, $query, $value[$field]);
+        } else $_->isPartial = true;
       }
-    };
-  };
-
-  return {
-    $_ = { isPartial: false };
-    $value = self::$cache[key ?? '_root'];
-    $result = walk(self::$_, self::$cache, self::$query, self::$value);
-    if (!$_.isPartial) return $result;
-  };
+      return $data;
+    }
+  }
 }
+
+return {
+  $_ = (object)['isPartial' => false];
+  $value = $cache['key' ?? '_root'];
+  $result = walk($_, $cache, $query, $value);
+  if (!$_->isPartial) return $result;
+};
 
 ?>

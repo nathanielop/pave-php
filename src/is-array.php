@@ -1,11 +1,5 @@
 <?php
 
-namespace Pave;
-
-class IsArray {
-    public $array;
-
-    public static function isArray() {
-        return gettype(self::$array) === 'array';
-    }
+function isArray($array) {
+    return gettype($array) === 'array';
 }
