@@ -13,40 +13,40 @@ function ($cache, $execute, $getKey) {
     'cache' => $cache ?? (object)[],
 
     'cacheExecute' =>  function ($key, $query) {
-      cacheExecute($client->cache, $key, injectType($query));
+      cacheExecute($this->cache, $key, injectType($query));
     },
 
     'cacheUpdate' => function ($data) {
-      $prev = $client->cache;
-      $client->cache = mergeCaches($client->cache, $data);
-      if($client->cache === $prev) return $client;
+      $prev = $this->cache;
+      $this->cache = mergeCaches($this->cache, $data);
+      if($this->cache === $prev) return $this;
 
       foreach ($watchers as $watcher) {
         list($data, $onChange, $query) = $watcher;
-        if (!$query) return $onChange($client->cache);
-        $newData = $client['cacheExecute']($query);
+        if (!$query) return $onChange($this->cache);
+        $newData = $this['cacheExecute']($query);
         if(!isEqual($data, $newData)) $onChange($watcher['data'] = $newData);
       }
-      return $client;
+      return $this;
     },
 
     // PHP doesn't allow for async functions, so will have to come up with a solution for this
     'execute' => function ($query, ...$args) {
       $query = injectType($query);
-      $data = $client['execute']($query, ...$args);
-      $client['update']($data, $query);
+      $data = $this['execute']($query, ...$args);
+      $this['update']($data, $query);
       return $data;
     },
 
     'update' => function ($data, $query) {
       $query = injectType($query);
       $data = normalize($data, $getKey, $query);
-      $client['cacheUpdate']($data);
+      $this['cacheUpdate']($data);
     },
 
     'watch' => function($onChange, $query) {
       $query = $query && injectType($query);
-      $data = $query && $client['cacheExecute']($query);
+      $data = $query && $this['cacheExecute']($query);
       $watcher = (object)[$data, $onChange, $query];
       $watchers.add($watcher);
       return [ $data, 'unwatch' => function () { $watchers.delete($watcher); }];

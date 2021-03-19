@@ -6,6 +6,6 @@ class PaveError extends Error {
 
     public function __construct($code, $info) {
         $this.$code = $code;
-        $this += $info;
+        $this.$info = $info;
     }
 }

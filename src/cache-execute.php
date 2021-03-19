@@ -30,11 +30,9 @@ function walk($_, $cache, $query, $value) {
   }
 }
 
-return {
-  $_ = (object)['isPartial' => false];
-  $value = $cache['key' ?? '_root'];
-  $result = walk($_, $cache, $query, $value);
-  if (!$_->isPartial) return $result;
-};
-
-?>
+function cacheExecute($cache, $key, $query) {
+    $_ = (object)['isPartial' => false];
+    $value = $cache['key' ?? '_root'];
+    $result = walk($_, $cache, $query, $value);
+    if (!$_->isPartial) return $result;
+}

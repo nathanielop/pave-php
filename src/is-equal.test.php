@@ -2,18 +2,18 @@
 
 require 'is-equal.php';
 
-function undefined() {
-    echo isEqual(undefined, undefined);
-    echo isEqual(undefined, null);
-    echo isEqual(null, undefined);
-    echo isEqual(undefined, (object)[]);
-}
+// function undefined() {
+//     echo isEqual(undefined, undefined);
+//     echo isEqual(undefined, null);
+//     echo isEqual(null, undefined);
+//     echo isEqual(undefined, (object)[]);
+// }
 
 function null() {
     echo isEqual(null, null);
     echo isEqual(null, 0);
     echo isEqual(null, '');
-    echo isEqual(undefined, (object)[]);
+    // echo isEqual(undefined, (object)[]);
 }
 
 function boolean() {
