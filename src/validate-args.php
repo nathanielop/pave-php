@@ -1,153 +1,106 @@
 <?php
 
-namespace Pave;
+require 'is-array.php';
+require 'is-function.php';
+require 'is-object.php';
 
-use Pave\IsArray\isArray;
-use Pave\IsFunction\isFunction;
-use Pave\IsObject\isObject;
 use Pave\PaveError;
 
-const validateValue = ({
-  context,
-  path = [],
-  query,
-  schema,
-  type,
-  typeArgs,
-  value
-}) => {
-  const fail = (code, extra) => {
-    throw new PaveError(code, {
-      context,
-      path,
-      query,
-      schema,
-      type,
-      typeArgs,
-      value,
-      ...extra
-    });
+function validateValue($context, $path = [], $query, $schema, $type, $typeArgs, $value) {
+  $fail = function ($code, $extra) use ($context, $path, $query, $schema, $type, $typeArgs, $value) {
+    throw new PaveError($code, (object)[$context, $path, $query, $schema, $type, $typeArgs, $value, ...$extra]);
   };
 
-  let isNullable = false;
-  let isOptional = false;
+  $isNullable = false;
+  $isOptional = false;
+
   do {
-    if (type == null) {
-      if (value != null) return value;
+    if($type == null) {
+      if($value != null) return $value;
+      if(!$isOptional && $isNullable) return null;
+      if(!isset($value) && !$isOptional) $fail('expectedRequired', null);
+      if($value === null && !$isNullable) $fail('expectedNonNull', null);
 
-      if (!isOptional && isNullable) return null;
+      return $value;
+    } else if (!isObject($type)) {
+      if($schema[$type]) $type = $schema[$type];
+      else $fail('unknownType', null);
+    } else if (!isset($value) && isset($type->defaultValue)) {
+      $value = $type->defaultValue;
+    } else if ($type->optional) {
+      $type = $type->optional;
+      $isOptional = true;
+    } else if ($type->nullable) {
+      $type = $type->nullable;
+      $isNullable = true;
+    } else if ($value == null) $type = null;
+    else if ($type->arrayOf) {
+      if (!isArray($value)) $fail('expectedArray', null);
 
-      if (value === undefined && !isOptional) fail('expectedRequired');
-
-      if (value === null && !isNullable) fail('expectedNonNull');
-
-      return value;
-    } else if (!isObject(type)) {
-      if (schema[type]) type = schema[type];
-      else fail('unknownType');
-    } else if (value === undefined && type.defaultValue !== undefined) {
-      value = type.defaultValue;
-    } else if (type.optional) {
-      type = type.optional;
-      isOptional = true;
-    } else if (type.nullable) {
-      type = type.nullable;
-      isNullable = true;
-    } else if (value == null) type = null;
-    else if (type.arrayOf) {
-      if (!isArray(value)) fail('expectedArray');
-
-      const { minLength, maxLength } = type;
-      if (minLength != null && value.length < minLength) {
-        fail('expectedArrayMinLength');
+      list($minLength, $maxLength) = $type;
+      if($minLength != null && count($value) < $minLength) {
+        $fail('expectedArrayMinLength', null);
       }
 
-      if (maxLength != null && value.length > maxLength) {
-        fail('expectedArrayMaxLength');
+      if($maxLength != null && count($value) > $maxLength) {
+        $fail('expectedArrayMaxLength', null);
       }
 
-      return value.map((value, i) =>
-        validateValue({
-          context,
-          path: path.concat(i),
-          query,
-          schema,
-          type: type.arrayOf,
-          typeArgs,
-          value
-        })
-      );
-    } else if (type.oneOf) type = type.oneOf[type.resolveType(value)];
-    else if (type.fields) {
-      let check = {};
-      for (const field in type.fields) check[field] = undefined;
-      check = { ...check, ...value };
-      const _value = {};
-      for (const field in check) {
-        let value = check[field];
-        const _type = type.fields[field];
-        if (!_type) fail('unknownField', { field });
+      $returnMapping = array();
 
-        value = validateValue({
-          context,
-          path: path.concat(field),
-          query,
-          schema,
-          type: _type,
-          typeArgs,
-          value
-        });
-        if (value !== undefined) _value[field] = value;
+      foreach($value as $i => $val) {
+        array_push($returnMapping, validateValue($context, array_merge($path, $i), $query, $schema, $type->arrayOf, $typeArgs, $value));
       }
-      return _value;
+
+      return $returnMapping;
+    } else if ($type->oneOf) $type = $type->oneOf[$type->resolveType($value)];
+    else if ($type->fields) {
+      $check = (object)[];
+      foreach($type->fields as $field => $val) unset($check[$field]);
+
+      $check = (object)[...$check, ...$value];
+      $_value = (object)[];
+      foreach($check as $field => $val) {
+        $value = $check[$field];
+        $_type = $type->fields[$field];
+        if (!$_type) $fail('unknownField', (object)[$field]);
+
+        $value = validateValue(
+          $context,
+          array_merge($path, $field),
+          $query,
+          $schema,
+          $_type,
+          $typeArgs,
+          $value
+        );
+        if(isset($value)) $_value[$field] = $value;
+      }
+      return $_value;
     } else {
-      let _value = 'resolve' in type ? type.resolve : value;
-      if (isFunction(_value)) {
-        _value = _value({
-          args: validateArgs({
-            args: typeArgs,
-            context,
-            path: path.concat('_args'),
-            query,
-            schema,
-            type
-          }),
-          context,
-          path,
-          query,
-          schema,
-          type,
-          value
-        });
+      //$_value = 'resolve' in $type ? $type->resolve : $value;
+      if(isFunction($_value)) {
+        $_value = $_value(
+          validateArgs($typeArgs, $context, array_merge($path, ['_args']), $query, $schema, $type),
+          $context,
+          $path,
+          $query,
+          $schema,
+          $type,
+          $value
+        );
       }
-
-      typeArgs = type.typeArgs;
-      type = type.type;
-      value = _value;
+      $typeArgs = $type->typeArgs;
+      $type = $type->type;
+      $value = $_value;
     }
   } while (true);
-};
+}
 
-const validateArgs = ({ args, context, path, query, schema, type }) => {
-  args = validateValue({
-    context,
-    path,
-    query,
-    schema,
-    type: { defaultValue: {}, fields: type.args ?? {} },
-    value: args
-  });
+function validateArgs($args, $context, $path, $query, $schema, $type) {
+  $args = validateValue(null, $context, $path, $query, $schema, (object)['defaultValue' => (object)[], 'fields' => $type->args ?? (object)[] ], $args);
 
-  if (!type.validate) return args;
+  if($type->validate) return $args;
 
-  return type.validate({
-    args,
-    context,
-    path,
-    query: { ...query, _args: args },
-    schema,
-    type
-  });
-};
-
-export default validateArgs;
+  return $type->validate($args, $context, $path, (object)[...$query, $args], $schema, $type);
+}

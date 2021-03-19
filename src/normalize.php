@@ -16,7 +16,7 @@ function walk($normalized = new stdClass, $data, $getKey, $query) {
 
     if(!isObject($data) || $data->_type === 'undefined') return $data;
 
-    $key = $getKey && getKey($data);
+    $key = $getKey && $getKey($data);
     $obj = $key ? $normalized[$key] ?? ($normalized[$key] === (object)[]) : (object)[];
 
     // list($_args, $_field, ...$_query) = ensureObject($query); TODO: Translate this in all use instances

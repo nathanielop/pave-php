@@ -7,7 +7,7 @@ use Pave\PaveError;
 
 function validateQuery($context, $path = [], $query, $schema, $type) {
     $SKIP_ARGS = (object)[];
-    $fail = function ($code, $extra) {
+    $fail = function ($code, $extra) use ($context, $path, $query, $schema, $type) {
         throw new PaveError($code, (object)[$context, $path, $query, $schema, $type, ...$extra]);
     };
     do {
